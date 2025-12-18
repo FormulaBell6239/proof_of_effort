@@ -1,0 +1,88 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: poe_postgres
+    environment:
+      POSTGRES_USER: poe_user
+      POSTGRES_PASSWORD: poe_password
+      POSTGRES_DB: proof_of_effort
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - poe_network
+
+  redis:
+    image: redis:7-alpine
+    container_name: poe_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - poe_network
+
+  ipfs:
+    image: ipfs/kubo:latest
+    container_name: poe_ipfs
+    ports:
+      - "4001:4001"  # P2P
+      - "5001:5001"  # API
+      - "8080:8080"  # Gateway
+    volumes:
+      - ipfs_data:/data/ipfs
+      - ipfs_export:/export
+    networks:
+      - poe_network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: poe_backend
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://poe_user:poe_password@postgres:5432/proof_of_effort
+      REDIS_URL: redis://redis:6379
+      IPFS_API_URL: http://ipfs:5001
+    ports:
+      - "3001:3001"
+    depends_on:
+      - postgres
+      - redis
+      - ipfs
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    networks:
+      - poe_network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: poe_frontend
+    environment:
+      REACT_APP_API_URL: http://localhost:3001
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    networks:
+      - poe_network
+
+volumes:
+  postgres_data:
+  redis_data:
+  ipfs_data:
+  ipfs_export:
+
+networks:
+  poe_network:
+    driver: bridge

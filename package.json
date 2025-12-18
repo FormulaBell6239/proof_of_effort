@@ -1,0 +1,30 @@
+{
+  "name": "proof-of-effort-network",
+  "version": "0.1.0",
+  "description": "A decentralized platform for verifiable proof-of-effort and trust building",
+  "main": "index.js",
+  "scripts": {
+    "install:all": "npm install && cd backend && npm install && cd ../frontend && npm install && cd ../contracts && npm install",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd frontend && npm start",
+    "dev:contracts": "cd contracts && npx hardhat node",
+    "build:all": "cd backend && npm run build && cd ../frontend && npm run build",
+    "test:all": "cd backend && npm test && cd ../contracts && npx hardhat test",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down"
+  },
+  "keywords": [
+    "proof-of-effort",
+    "blockchain",
+    "decentralized",
+    "trust",
+    "verification",
+    "fraud-prevention"
+  ],
+  "author": "",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": ""
+  }
+}

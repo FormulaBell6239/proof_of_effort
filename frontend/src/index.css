@@ -1,0 +1,112 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  margin: 0;
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
+    'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans',
+    'Helvetica Neue', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  /* Global dark + neon vibe */
+  background: radial-gradient(1200px 800px at 20% 10%, rgba(56, 189, 248, 0.14), transparent 60%),
+    radial-gradient(1000px 700px at 80% 0%, rgba(99, 102, 241, 0.14), transparent 55%),
+    radial-gradient(1000px 700px at 70% 90%, rgba(16, 185, 129, 0.10), transparent 55%),
+    #05070f;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}
+
+@layer components {
+  /* Layout helpers */
+  .app-surface {
+    @apply bg-white/5 border border-white/10;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(10px);
+  }
+
+  .app-grid {
+    background-image:
+      radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.10) 1px, transparent 0);
+    background-size: 26px 26px;
+    mask-image: radial-gradient(500px 280px at 50% 120px, #000 40%, transparent 80%);
+  }
+
+  .glow {
+    box-shadow:
+      0 0 0 1px rgba(255, 255, 255, 0.08),
+      0 12px 40px rgba(2, 132, 199, 0.18),
+      0 0 40px rgba(56, 189, 248, 0.16);
+  }
+
+  .btn-primary {
+    @apply relative inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 font-semibold text-white transition-transform;
+    @apply bg-gradient-to-r from-primary-500 via-primary-600 to-indigo-500;
+    @apply shadow-lg shadow-primary-500/25;
+  }
+
+  .btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 18px 60px rgba(2, 132, 199, 0.25);
+  }
+
+  .btn-primary:active {
+    transform: translateY(0px);
+  }
+  
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 font-semibold;
+  @apply bg-white/10 text-white border border-white/20;
+    @apply transition-colors;
+  }
+
+  .btn-secondary:hover {
+    @apply bg-white/15;
+  }
+  
+  .card {
+    @apply rounded-2xl p-6 app-surface;
+  }
+
+  .card:hover {
+    @apply border-white/20;
+  }
+  
+  .input-field {
+    @apply w-full rounded-xl px-4 py-2;
+    @apply bg-black/30 text-white placeholder-white/40;
+  @apply border border-white/10;
+    @apply focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-400/50;
+  }
+
+  .subtle-divider {
+    @apply border-t border-white/10;
+  }
+}
+
+@layer utilities {
+  .text-gradient {
+    @apply bg-gradient-to-r from-white via-primary-100 to-indigo-100 bg-clip-text text-transparent;
+  }
+
+  .noise {
+    position: relative;
+  }
+
+  .noise:before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.06;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='.35'/%3E%3C/svg%3E");
+    mix-blend-mode: overlay;
+    border-radius: inherit;
+  }
+}
