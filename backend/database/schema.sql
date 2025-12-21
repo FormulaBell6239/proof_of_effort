@@ -112,6 +112,46 @@ CREATE INDEX idx_trust_scores_user ON trust_scores(user_id);
 CREATE INDEX idx_fraud_logs_user ON fraud_detection_logs(user_id);
 CREATE INDEX idx_fraud_logs_effort ON fraud_detection_logs(effort_id);
 
+-- ------------------------------------------------------------
+-- Gamification
+-- ------------------------------------------------------------
+
+-- Aggregated progression state per user
+CREATE TABLE user_progress (
+    user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    xp INTEGER NOT NULL DEFAULT 0,
+    level INTEGER NOT NULL DEFAULT 1,
+    verified_streak_days INTEGER NOT NULL DEFAULT 0,
+    last_verified_effort_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Badge catalog (static definitions)
+CREATE TABLE badges (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    code VARCHAR(64) UNIQUE NOT NULL,
+    name VARCHAR(120) NOT NULL,
+    description TEXT,
+    tier VARCHAR(24) DEFAULT 'bronze',
+    metadata JSONB,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Badge awards to users
+CREATE TABLE user_badges (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    badge_id UUID NOT NULL REFERENCES badges(id) ON DELETE CASCADE,
+    awarded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    reason TEXT,
+    UNIQUE(user_id, badge_id)
+);
+
+CREATE INDEX idx_user_progress_user ON user_progress(user_id);
+CREATE INDEX idx_user_badges_user ON user_badges(user_id);
+CREATE INDEX idx_user_badges_badge ON user_badges(badge_id);
+
 -- Trigger to update updated_at timestamp
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
@@ -131,4 +171,7 @@ CREATE TRIGGER update_verifications_updated_at BEFORE UPDATE ON verifications
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 CREATE TRIGGER update_trust_scores_updated_at BEFORE UPDATE ON trust_scores
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_user_progress_updated_at BEFORE UPDATE ON user_progress
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

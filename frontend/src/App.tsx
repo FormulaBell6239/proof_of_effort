@@ -6,6 +6,7 @@ import SubmitEffortPage from './pages/SubmitEffortPage';
 import VerifyPage from './pages/VerifyPage';
 import ProfilePage from './pages/ProfilePage';
 import LeaderboardPage from './pages/LeaderboardPage';
+import BadgesPage from './pages/BadgesPage';
 
 function App() {
   return (
@@ -16,6 +17,7 @@ function App() {
         <Route path="/submit" component={SubmitEffortPage} />
         <Route path="/verify" component={VerifyPage} />
         <Route path="/profile/:userId?" component={ProfilePage} />
+        <Route path="/badges" component={BadgesPage} />
         <Route path="/leaderboard" component={LeaderboardPage} />
       </Switch>
     </Layout>

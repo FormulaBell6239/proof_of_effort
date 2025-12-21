@@ -4,6 +4,7 @@ import type { AuthRequest } from '../middleware/auth';
 import { query } from '../db/query';
 import { AppError } from '../middleware/errorHandler';
 import { assessEffortRisk } from '../services/riskScoring';
+import { applyGamificationEvent } from '../services/gamification/progression';
 
 const router = Router();
 
@@ -75,6 +76,13 @@ router.post('/', authenticate, async (req: AuthRequest, res, next) => {
     // Update counters - MVP version
     await query(`UPDATE users SET total_verifications = total_verifications + 1 WHERE id = $1`, [verifierId]);
 
+    // Gamification: reward the verifier for doing the work.
+    await applyGamificationEvent({
+      type: 'VERIFICATION_SUBMITTED',
+      userId: verifierId,
+      effortId: effort_id
+    });
+
     if (normalizedStatus === 'approved') {
       await query(
         `UPDATE effort_records
@@ -83,6 +91,45 @@ router.post('/', authenticate, async (req: AuthRequest, res, next) => {
         [effort_id]
       );
       await query(`UPDATE users SET verified_efforts = verified_efforts + 1 WHERE id = $1`, [effort.user_id]);
+
+      // Gamification: reward the effort owner when their effort is verified.
+      // Pull minimal data for sizing + risk multiplier.
+      const effortInfo = await query<{
+        title: string;
+        description: string;
+        category: string;
+        estimated_hours: number | null;
+        proof_files: string[] | null;
+        proof_ipfs_hash: string | null;
+        created_at: string;
+      }>(
+        `SELECT title, description, category, estimated_hours, proof_files, proof_ipfs_hash, created_at
+         FROM effort_records
+         WHERE id = $1`,
+        [effort_id]
+      );
+
+      const e = effortInfo.rows[0];
+      const risk =
+        e != null
+          ? assessEffortRisk({
+              title: e.title,
+              description: e.description,
+              category: e.category,
+              estimated_hours: e.estimated_hours ?? undefined,
+              proof_files_count: e.proof_files?.length ?? 0,
+              proof_ipfs_hash: e.proof_ipfs_hash ?? undefined,
+              created_at: e.created_at
+            })
+          : undefined;
+
+      await applyGamificationEvent({
+        type: 'EFFORT_VERIFIED',
+        userId: effort.user_id,
+        effortId: effort_id,
+        estimatedHours: e?.estimated_hours ?? undefined,
+        risk
+      });
     } else if (normalizedStatus === 'rejected') {
       await query(`UPDATE effort_records SET status = 'rejected' WHERE id = $1`, [effort_id]);
     } else if (normalizedStatus === 'needs_more_info') {

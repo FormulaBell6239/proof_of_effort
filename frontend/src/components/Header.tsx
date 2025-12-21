@@ -36,6 +36,9 @@ export default function Header() {
             <Link to="/verify" className="px-3 py-2 rounded-xl text-sm text-white/70 hover:text-white hover:bg-white/10 transition-colors">
               Verify
             </Link>
+            <Link to="/badges" className="px-3 py-2 rounded-xl text-sm text-white/70 hover:text-white hover:bg-white/10 transition-colors">
+              Badges
+            </Link>
             <Link to="/leaderboard" className="px-3 py-2 rounded-xl text-sm text-white/70 hover:text-white hover:bg-white/10 transition-colors">
               Leaderboard
             </Link>

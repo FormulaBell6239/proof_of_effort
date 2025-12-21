@@ -9,6 +9,7 @@ import userRoutes from './routes/userRoutes';
 import effortRoutes from './routes/effortRoutes';
 import verificationRoutes from './routes/verificationRoutes';
 import trustScoreRoutes from './routes/trustScoreRoutes';
+import gamificationRoutes from './routes/gamificationRoutes';
 
 dotenv.config();
 
@@ -76,6 +77,7 @@ app.use(`/api/${API_VERSION}/users`, userRoutes);
 app.use(`/api/${API_VERSION}/efforts`, effortRoutes);
 app.use(`/api/${API_VERSION}/verifications`, verificationRoutes);
 app.use(`/api/${API_VERSION}/trust-scores`, trustScoreRoutes);
+app.use(`/api/${API_VERSION}/gamification`, gamificationRoutes);
 
 // 404 handler
 app.use((_req: Request, res: Response) => {

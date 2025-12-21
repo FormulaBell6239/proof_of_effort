@@ -5,6 +5,7 @@ import { assessEffortRisk } from '../services/riskScoring';
 import rateLimit from 'express-rate-limit';
 import { AppError } from '../middleware/errorHandler';
 import { query } from '../db/query';
+import { applyGamificationEvent, seedDefaultBadges } from '../services/gamification/progression';
 
 const router = Router();
 
@@ -144,6 +145,17 @@ router.post('/', authenticate, async (req: AuthRequest, res, next) => {
     );
 
     await query(`UPDATE users SET total_efforts = total_efforts + 1 WHERE id = $1`, [userId]);
+
+    // Gamification: tiny reward for submitting effort;
+    // this keeps the "verified-heavy" model while still nudging engagement.
+    await seedDefaultBadges();
+    await applyGamificationEvent({
+      type: 'EFFORT_SUBMITTED',
+      userId,
+      effortId: inserted.rows[0].id,
+      estimatedHours: normalizedEstimatedHours,
+      risk: effortAssessment
+    });
 
     res.status(201).json({
       success: true,
