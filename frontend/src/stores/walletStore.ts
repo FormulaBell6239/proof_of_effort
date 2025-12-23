@@ -6,6 +6,7 @@ interface WalletState {
   address: string | null;
   provider: ethers.BrowserProvider | null;
   signer: ethers.Signer | null;
+  userId: string | null;
   connect: () => Promise<void>;
   disconnect: () => void;
 }
@@ -15,6 +16,7 @@ export const useWalletStore = create<WalletState>((set) => ({
   address: null,
   provider: null,
   signer: null,
+  userId: null,
 
   connect: async () => {
     try {
@@ -33,6 +35,7 @@ export const useWalletStore = create<WalletState>((set) => ({
         address,
         provider,
         signer,
+        userId: address
       });
     } catch (error) {
       console.error('Error connecting wallet:', error);
@@ -45,6 +48,7 @@ export const useWalletStore = create<WalletState>((set) => ({
       address: null,
       provider: null,
       signer: null,
+      userId: null
     });
   },
 }));

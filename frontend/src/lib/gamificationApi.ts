@@ -28,8 +28,14 @@ export type BadgeDefinition = {
   created_at: string;
 };
 
+function apiUrl(path: string): string {
+  const base = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? '';
+  if (!base) return path;
+  return new URL(path, base).toString();
+}
+
 export async function fetchGamificationMe(userId?: string): Promise<{ progress: UserProgress; badges: UserBadge[] }> {
-  const url = new URL('/api/v1/gamification/me', window.location.origin);
+  const url = new URL(apiUrl('/api/v1/gamification/me'), window.location.origin);
   if (userId) url.searchParams.set('userId', userId);
 
   const res = await fetch(url.toString(), {
@@ -46,7 +52,7 @@ export async function fetchGamificationMe(userId?: string): Promise<{ progress: 
 }
 
 export async function fetchBadges(): Promise<BadgeDefinition[]> {
-  const res = await fetch('/api/v1/gamification/badges', {
+  const res = await fetch(apiUrl('/api/v1/gamification/badges'), {
     method: 'GET',
     headers: { 'Content-Type': 'application/json' }
   });

@@ -19,10 +19,8 @@ export const authenticate = async (
       throw new AppError('Authentication token required', 401);
     }
 
-    const jwtSecret = process.env.JWT_SECRET;
-    if (!jwtSecret) {
-      throw new Error('JWT_SECRET not configured');
-    }
+    const jwtSecret = process.env.JWT_SECRET || (process.env.NODE_ENV !== 'production' ? 'dev-jwt-secret' : undefined);
+    if (!jwtSecret) throw new Error('JWT_SECRET not configured');
 
     const decoded = jwt.verify(token, jwtSecret) as {
       userId: string;

@@ -2,6 +2,26 @@ import { query } from '../../db/query';
 import { AppError } from '../../middleware/errorHandler';
 import type { RiskAssessment } from '../riskScoring';
 
+export const DEFAULT_BADGES: Array<{
+  code: string;
+  name: string;
+  description: string;
+  tier: string;
+}> = [
+  {
+    code: 'FIRST_VERIFIED_EFFORT',
+    name: 'First Verified Effort',
+    description: 'Your first effort was verified by the community.',
+    tier: 'bronze'
+  },
+  {
+    code: 'SEVEN_DAY_STREAK',
+    name: '7-Day Streak',
+    description: 'Seven verified-effort days in a row.',
+    tier: 'silver'
+  }
+];
+
 export type GamificationEvent =
   | {
       type: 'EFFORT_SUBMITTED';
@@ -112,22 +132,7 @@ export async function applyGamificationEvent(event: GamificationEvent) {
 }
 
 export async function seedDefaultBadges() {
-  const defaults = [
-    {
-      code: 'FIRST_VERIFIED_EFFORT',
-      name: 'First Verified Effort',
-      description: 'Your first effort was verified by the community.',
-      tier: 'bronze'
-    },
-    {
-      code: 'SEVEN_DAY_STREAK',
-      name: '7-Day Streak',
-      description: 'Seven verified-effort days in a row.',
-      tier: 'silver'
-    }
-  ];
-
-  for (const b of defaults) {
+  for (const b of DEFAULT_BADGES) {
     await query(
       `INSERT INTO badges (code, name, description, tier)
        VALUES ($1, $2, $3, $4)

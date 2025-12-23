@@ -1,6 +1,8 @@
 import GamificationPanel from '../components/GamificationPanel';
+import { useWalletStore } from '../stores/walletStore';
 
 export default function ProfilePage() {
+  const { userId } = useWalletStore();
   return (
     <div className="space-y-6">
       <div className="card">
@@ -19,7 +21,7 @@ export default function ProfilePage() {
       </div>
 
       <div className="grid md:grid-cols-2 gap-6">
-        <GamificationPanel title="Progress" />
+        <GamificationPanel title="Progress" userId={userId ?? undefined} />
         <div className="card">
           <h2 className="text-xl font-semibold mb-4">Trust Score Breakdown</h2>
           <div className="space-y-3">

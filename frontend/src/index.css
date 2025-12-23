@@ -67,7 +67,7 @@ code {
   }
 
   .btn-secondary:hover {
-    @apply bg-white/15;
+    @apply bg-white/[0.15];
   }
   
   .card {

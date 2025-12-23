@@ -3,6 +3,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import dotenv from 'dotenv';
 import rateLimit from 'express-rate-limit';
+import crypto from 'crypto';
 import { errorHandler } from './middleware/errorHandler';
 import { logger } from './utils/logger';
 import userRoutes from './routes/userRoutes';
