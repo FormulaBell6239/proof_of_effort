@@ -2,6 +2,7 @@ import express from 'express';
 import { query } from '../db/query';
 import { DEFAULT_BADGES, seedDefaultBadges } from '../services/gamification/progression';
 import { isDbUnavailableError } from '../db/errors';
+import { authenticate, AuthRequest } from '../middleware/auth';
 
 const router = express.Router();
 
@@ -19,8 +20,8 @@ router.get('/health', async (_req, res) => {
   }
 });
 
-router.get('/me', async (req, res) => {
-  const userId = (req.query.userId as string | undefined) ?? 'demo-user';
+router.get('/me', authenticate, async (req: AuthRequest, res) => {
+  const userId = req.userId!;
 
   try {
     const progress = await query(

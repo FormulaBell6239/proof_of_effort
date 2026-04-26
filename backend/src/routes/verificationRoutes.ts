@@ -193,28 +193,92 @@ router.get('/pending', authenticate, async (_req: AuthRequest, res, next) => {
 });
 
 // Get verification by ID
-router.get('/:verificationId', (req, res) => {
-  res.json({ message: `Get verification ${req.params.verificationId}` });
+router.get('/:verificationId', async (req, res, next) => {
+  try {
+    const result = await query(
+      `SELECT v.*, u.username AS verifier_username, er.title AS effort_title
+       FROM verifications v
+       JOIN users u ON u.id = v.verifier_id
+       JOIN effort_records er ON er.id = v.effort_id
+       WHERE v.id = $1`,
+      [req.params.verificationId]
+    );
+    if (!result.rows[0]) throw new AppError('Verification not found', 404);
+    res.json({ success: true, data: result.rows[0] });
+  } catch (err) { next(err); }
 });
 
-// Update verification status
-router.put('/:verificationId', authenticate, (req, res) => {
-  res.json({ message: `Update verification ${req.params.verificationId}` });
+// Update verification (verifier can revise their own)
+router.put('/:verificationId', authenticate, async (req: AuthRequest, res, next) => {
+  try {
+    const { status, comments, confidence_score } = req.body ?? {};
+    const result = await query(
+      `UPDATE verifications
+       SET status           = COALESCE($1, status),
+           comments         = COALESCE($2, comments),
+           confidence_score = COALESCE($3, confidence_score)
+       WHERE id = $4 AND verifier_id = $5
+       RETURNING *`,
+      [status || null, comments || null, confidence_score ?? null, req.params.verificationId, req.userId]
+    );
+    if (!result.rows[0]) throw new AppError('Verification not found or not yours', 404);
+    res.json({ success: true, data: result.rows[0] });
+  } catch (err) { next(err); }
 });
 
-// Get verifications by user (as verifier)
-router.get('/user/:userId', (req, res) => {
-  res.json({ message: `Get verifications by user ${req.params.userId}` });
+// Get all verifications submitted by a user (as verifier)
+router.get('/user/:userId', async (req, res, next) => {
+  try {
+    const limit = Math.min(Number(req.query.limit ?? 20), 100);
+    const result = await query(
+      `SELECT v.*, er.title AS effort_title, er.category
+       FROM verifications v
+       JOIN effort_records er ON er.id = v.effort_id
+       WHERE v.verifier_id = $1
+       ORDER BY v.created_at DESC
+       LIMIT $2`,
+      [req.params.userId, limit]
+    );
+    res.json({ success: true, data: result.rows });
+  } catch (err) { next(err); }
 });
 
-// Request additional verification
-router.post('/:effortId/request-verification', authenticate, (req, res) => {
-  res.json({ message: `Request verification for effort ${req.params.effortId}` });
+// Request additional verification for an effort (effort owner)
+router.post('/:effortId/request-verification', authenticate, async (req: AuthRequest, res, next) => {
+  try {
+    const result = await query(
+      `UPDATE effort_records
+       SET status = 'under_review', updated_at = NOW()
+       WHERE id = $1 AND user_id = $2 AND status = 'pending'
+       RETURNING id, status`,
+      [req.params.effortId, req.userId]
+    );
+    if (!result.rows[0]) throw new AppError('Effort not found, not yours, or not in pending state', 404);
+    res.json({ success: true, data: result.rows[0] });
+  } catch (err) { next(err); }
 });
 
 // Report fraudulent activity
-router.post('/report-fraud', authenticate, (_req, res) => {
-  res.json({ message: 'Report fraud endpoint' });
+router.post('/report-fraud', authenticate, async (req: AuthRequest, res, next) => {
+  try {
+    const { effort_id, reason, evidence } = req.body ?? {};
+    if (!effort_id || typeof effort_id !== 'string') throw new AppError('effort_id is required', 400);
+    if (!reason || typeof reason !== 'string') throw new AppError('reason is required', 400);
+
+    await query(
+      `INSERT INTO fraud_detection_logs (effort_id, user_id, detection_type, risk_level, details)
+       VALUES ($1, $2, 'USER_REPORT', 'HIGH', $3)`,
+      [effort_id, req.userId, JSON.stringify({ reason, evidence: evidence || null })]
+    );
+
+    // Flag effort for review
+    await query(
+      `UPDATE effort_records SET status = 'disputed', updated_at = NOW() WHERE id = $1`,
+      [effort_id]
+    );
+
+    res.json({ success: true, message: 'Fraud report submitted' });
+  } catch (err) { next(err); }
 });
 
 export default router;

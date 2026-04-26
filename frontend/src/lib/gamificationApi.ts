@@ -28,19 +28,26 @@ export type BadgeDefinition = {
   created_at: string;
 };
 
+import { getAuthToken } from '../stores/walletStore';
+
 function apiUrl(path: string): string {
   const base = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? '';
   if (!base) return path;
   return new URL(path, base).toString();
 }
 
-export async function fetchGamificationMe(userId?: string): Promise<{ progress: UserProgress; badges: UserBadge[] }> {
-  const url = new URL(apiUrl('/api/v1/gamification/me'), window.location.origin);
-  if (userId) url.searchParams.set('userId', userId);
+function authHeaders(): Record<string, string> {
+  const token = getAuthToken();
+  return {
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+}
 
-  const res = await fetch(url.toString(), {
+export async function fetchGamificationMe(): Promise<{ progress: UserProgress; badges: UserBadge[] }> {
+  const res = await fetch(apiUrl('/api/v1/gamification/me'), {
     method: 'GET',
-    headers: { 'Content-Type': 'application/json' }
+    headers: authHeaders(),
   });
 
   if (!res.ok) {
@@ -54,7 +61,7 @@ export async function fetchGamificationMe(userId?: string): Promise<{ progress: 
 export async function fetchBadges(): Promise<BadgeDefinition[]> {
   const res = await fetch(apiUrl('/api/v1/gamification/badges'), {
     method: 'GET',
-    headers: { 'Content-Type': 'application/json' }
+    headers: authHeaders(),
   });
 
   if (!res.ok) {

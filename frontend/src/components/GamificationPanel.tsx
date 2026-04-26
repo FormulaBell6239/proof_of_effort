@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { fetchGamificationMe, xpForNextLevel } from '../lib/gamificationApi';
+import { getAuthToken } from '../stores/walletStore';
 
 type Props = {
   userId?: string;
@@ -23,9 +24,11 @@ function formatTier(tier?: string) {
 }
 
 export default function GamificationPanel({ userId, title = 'Progress' }: Props) {
+  const isAuthenticated = !!getAuthToken();
   const { data, isLoading, error } = useQuery({
-    queryKey: ['gamificationMe', userId ?? 'demo-user'],
-    queryFn: () => fetchGamificationMe(userId)
+    queryKey: ['gamificationMe'],
+    queryFn: () => fetchGamificationMe(),
+    enabled: isAuthenticated,
   });
 
   const progress = data?.progress;
@@ -48,7 +51,7 @@ export default function GamificationPanel({ userId, title = 'Progress' }: Props)
   }, [progress]);
 
   return (
-    <div className="card">
+    <div className="card card-tinted">
       <div className="flex items-center justify-between gap-4">
         <h3 className="text-lg font-semibold">{title}</h3>
         {progress && (

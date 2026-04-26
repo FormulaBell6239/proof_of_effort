@@ -15,10 +15,46 @@ export const DEFAULT_BADGES: Array<{
     tier: 'bronze'
   },
   {
+    code: 'FIRST_VERIFICATION_GIVEN',
+    name: 'Community Reviewer',
+    description: 'You verified someone else\'s effort for the first time.',
+    tier: 'bronze'
+  },
+  {
     code: 'SEVEN_DAY_STREAK',
     name: '7-Day Streak',
     description: 'Seven verified-effort days in a row.',
     tier: 'silver'
+  },
+  {
+    code: 'TEN_VERIFICATIONS_GIVEN',
+    name: 'Trusted Reviewer',
+    description: 'Submitted 10 verifications for other users\' efforts.',
+    tier: 'silver'
+  },
+  {
+    code: 'XP_500',
+    name: 'Gold Contributor',
+    description: 'Accumulated 500 XP through verified efforts and community participation.',
+    tier: 'gold'
+  },
+  {
+    code: 'THIRTY_DAY_STREAK',
+    name: 'Streak Legend',
+    description: 'Maintained a 30-day verified-effort streak.',
+    tier: 'gold'
+  },
+  {
+    code: 'XP_2000',
+    name: 'Platinum Contributor',
+    description: 'Accumulated 2000 XP — a true pillar of the Proof of Effort community.',
+    tier: 'platinum'
+  },
+  {
+    code: 'HUNDRED_DAY_STREAK',
+    name: 'Century Streak',
+    description: '100 verified-effort days in a row. Legendary consistency.',
+    tier: 'platinum'
   }
 ];
 
@@ -125,6 +161,35 @@ export async function applyGamificationEvent(event: GamificationEvent) {
     }
     if (streak === 7) {
       await awardBadgeIfMissing(event.userId, 'SEVEN_DAY_STREAK', '7-day verified streak');
+    }
+    if (streak === 30) {
+      await awardBadgeIfMissing(event.userId, 'THIRTY_DAY_STREAK', '30-day verified streak');
+    }
+    if (streak === 100) {
+      await awardBadgeIfMissing(event.userId, 'HUNDRED_DAY_STREAK', '100-day verified streak');
+    }
+  }
+
+  // XP milestone badges (check after every event).
+  if (row.xp >= 500) {
+    await awardBadgeIfMissing(event.userId, 'XP_500', '500 XP milestone');
+  }
+  if (row.xp >= 2000) {
+    await awardBadgeIfMissing(event.userId, 'XP_2000', '2000 XP milestone');
+  }
+
+  // Verification-count badges.
+  if (event.type === 'VERIFICATION_SUBMITTED') {
+    const countRes = await query<{ cnt: string }>(
+      `SELECT COUNT(*) AS cnt FROM verifications WHERE verifier_id = $1`,
+      [event.userId]
+    );
+    const cnt = parseInt(countRes.rows[0]?.cnt ?? '0', 10);
+    if (cnt === 1) {
+      await awardBadgeIfMissing(event.userId, 'FIRST_VERIFICATION_GIVEN', 'First verification submitted');
+    }
+    if (cnt >= 10) {
+      await awardBadgeIfMissing(event.userId, 'TEN_VERIFICATIONS_GIVEN', '10 verifications submitted');
     }
   }
 

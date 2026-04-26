@@ -55,7 +55,12 @@ export default function SubmitEffortPage() {
 
   return (
     <div className="space-y-4">
-      <div className="card overflow-hidden">
+      <div
+        className="card overflow-hidden"
+        style={{
+          background: 'linear-gradient(to bottom, rgba(14,165,233,0.20) 0%, rgba(14,165,233,0.06) 20%, rgba(255,255,255,0.03) 38%, rgba(255,255,255,0.03) 58%, rgba(14,165,233,0.07) 72%, rgba(14,165,233,0.14) 85%, rgba(14,165,233,0.20) 100%)'
+        }}
+      >
         <div className="-m-6 mb-6 p-6 border-b border-white/10 bg-gradient-to-r from-primary-500/10 via-indigo-500/10 to-emerald-500/10">
           <h1 className="text-3xl md:text-4xl font-extrabold text-gradient">Submit Proof of Effort</h1>
           <p className="mt-2 text-white/65">Add details, attach evidence, and publish a claim for verification.</p>
@@ -103,18 +108,25 @@ export default function SubmitEffortPage() {
 
           <div>
             <label className="block text-sm font-semibold text-white/80 mb-2">Category</label>
-            <select
-              className="input-field"
-              value={category}
-              onChange={(e) => setCategory(e.target.value as (typeof CATEGORY_OPTIONS)[number])}
-            >
-              <option value="volunteering">Volunteering</option>
-              <option value="caregiving">Caregiving</option>
-              <option value="work">Work</option>
-              <option value="education">Education</option>
-              <option value="community_service">Community Service</option>
-              <option value="other">Other</option>
-            </select>
+            <div className="relative">
+              <select
+                className="w-full appearance-none rounded-xl px-4 py-2 pr-10 bg-black/30 text-white border border-white/10 focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-400/50 cursor-pointer"
+                value={category}
+                onChange={(e) => setCategory(e.target.value as (typeof CATEGORY_OPTIONS)[number])}
+              >
+                <option value="volunteering">Volunteering</option>
+                <option value="caregiving">Caregiving</option>
+                <option value="work">Work</option>
+                <option value="education">Education</option>
+                <option value="community_service">Community Service</option>
+                <option value="other">Other</option>
+              </select>
+              <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
+                <svg className="w-4 h-4 text-white/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+            </div>
           </div>
 
           <div>
@@ -130,15 +142,29 @@ export default function SubmitEffortPage() {
 
           <div>
             <label className="block text-sm font-semibold text-white/80 mb-2">Upload Proof</label>
-            <div className="rounded-2xl border border-dashed border-white/20 bg-black/20 p-5">
-              <div className="text-sm text-white/60">Files are used for risk preview (count) in this MVP.</div>
+            <label className="group flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-white/20 bg-black/20 hover:bg-white/5 hover:border-white/30 transition-colors cursor-pointer p-8">
               <input
                 type="file"
                 multiple
-                className="input-field mt-3"
+                className="sr-only"
                 onChange={(e) => setProofFiles(e.target.files)}
               />
-            </div>
+              <div className="h-10 w-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/40 group-hover:text-white/60 transition-colors">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                </svg>
+              </div>
+              {proofFiles && proofFiles.length > 0 ? (
+                <div className="text-sm text-emerald-400 font-medium">
+                  {proofFiles.length} file{proofFiles.length !== 1 ? 's' : ''} selected
+                </div>
+              ) : (
+                <div className="text-center">
+                  <div className="text-sm text-white/60">Drop files here or <span className="text-primary-400">browse</span></div>
+                  <div className="text-xs text-white/30 mt-1">Images, PDF, or video up to 10 MB each</div>
+                </div>
+              )}
+            </label>
           </div>
 
           <div>
@@ -159,7 +185,7 @@ export default function SubmitEffortPage() {
           <button
             type="submit"
             className="btn-primary w-full"
-            disabled={submitState.status === 'submitting' || !enabled}
+            disabled={submitState.status === 'submitting'}
           >
             {submitState.status === 'submitting' ? 'Submitting…' : 'Submit Effort'}
           </button>

@@ -1,8 +1,9 @@
--- Database schema for Proof-of-Effort Network
--- PostgreSQL
+-- Migration: 001_initial_schema
+-- Created: 2026-04-26
+-- Description: Initial database schema for Proof-of-Effort Network
 
 -- Users table
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     wallet_address VARCHAR(42) UNIQUE NOT NULL,
     username VARCHAR(50) UNIQUE NOT NULL,
@@ -21,8 +22,7 @@ CREATE TABLE users (
     last_active TIMESTAMP
 );
 
--- Effort records table
-CREATE TABLE effort_records (
+CREATE TABLE IF NOT EXISTS effort_records (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     title VARCHAR(255) NOT NULL,
@@ -44,16 +44,14 @@ CREATE TABLE effort_records (
     verified_at TIMESTAMP
 );
 
--- Verifications table
-CREATE TABLE verifications (
+CREATE TABLE IF NOT EXISTS verifications (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     effort_id UUID NOT NULL REFERENCES effort_records(id) ON DELETE CASCADE,
     verifier_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    verification_type VARCHAR(50) NOT NULL,
+    verification_type VARCHAR(50) DEFAULT 'peer_review',
     status VARCHAR(50) DEFAULT 'pending',
     confidence_score DECIMAL(5,2) DEFAULT 0,
     comments TEXT,
-    proof_review JSONB,
     is_fraudulent BOOLEAN DEFAULT false,
     fraud_indicators TEXT[],
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -61,8 +59,7 @@ CREATE TABLE verifications (
     UNIQUE(effort_id, verifier_id)
 );
 
--- Trust scores table
-CREATE TABLE trust_scores (
+CREATE TABLE IF NOT EXISTS trust_scores (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE UNIQUE,
     total_score INTEGER DEFAULT 0,
@@ -78,8 +75,7 @@ CREATE TABLE trust_scores (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Fraud detection logs table
-CREATE TABLE fraud_detection_logs (
+CREATE TABLE IF NOT EXISTS fraud_detection_logs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES users(id) ON DELETE SET NULL,
     effort_id UUID REFERENCES effort_records(id) ON DELETE SET NULL,
@@ -91,8 +87,7 @@ CREATE TABLE fraud_detection_logs (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- User sessions table (for JWT management)
-CREATE TABLE user_sessions (
+CREATE TABLE IF NOT EXISTS user_sessions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     token_hash VARCHAR(256) NOT NULL,
@@ -100,25 +95,7 @@ CREATE TABLE user_sessions (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Indexes for performance
-CREATE INDEX idx_users_wallet ON users(wallet_address);
-CREATE INDEX idx_users_username ON users(username);
-CREATE INDEX idx_efforts_user ON effort_records(user_id);
-CREATE INDEX idx_efforts_category ON effort_records(category);
-CREATE INDEX idx_efforts_status ON effort_records(status);
-CREATE INDEX idx_efforts_created ON effort_records(created_at DESC);
-CREATE INDEX idx_verifications_effort ON verifications(effort_id);
-CREATE INDEX idx_verifications_verifier ON verifications(verifier_id);
-CREATE INDEX idx_trust_scores_user ON trust_scores(user_id);
-CREATE INDEX idx_fraud_logs_user ON fraud_detection_logs(user_id);
-CREATE INDEX idx_fraud_logs_effort ON fraud_detection_logs(effort_id);
-
--- ------------------------------------------------------------
--- Gamification
--- ------------------------------------------------------------
-
--- Aggregated progression state per user
-CREATE TABLE user_progress (
+CREATE TABLE IF NOT EXISTS user_progress (
     user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
     xp INTEGER NOT NULL DEFAULT 0,
     level INTEGER NOT NULL DEFAULT 1,
@@ -128,8 +105,7 @@ CREATE TABLE user_progress (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Badge catalog (static definitions)
-CREATE TABLE badges (
+CREATE TABLE IF NOT EXISTS badges (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     code VARCHAR(64) UNIQUE NOT NULL,
     name VARCHAR(120) NOT NULL,
@@ -139,8 +115,7 @@ CREATE TABLE badges (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Badge awards to users
-CREATE TABLE user_badges (
+CREATE TABLE IF NOT EXISTS user_badges (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     badge_id UUID NOT NULL REFERENCES badges(id) ON DELETE CASCADE,
@@ -149,11 +124,22 @@ CREATE TABLE user_badges (
     UNIQUE(user_id, badge_id)
 );
 
-CREATE INDEX idx_user_progress_user ON user_progress(user_id);
-CREATE INDEX idx_user_badges_user ON user_badges(user_id);
-CREATE INDEX idx_user_badges_badge ON user_badges(badge_id);
+-- Indexes
+CREATE INDEX IF NOT EXISTS idx_efforts_user ON effort_records(user_id);
+CREATE INDEX IF NOT EXISTS idx_efforts_status ON effort_records(status);
+CREATE INDEX IF NOT EXISTS idx_efforts_category ON effort_records(category);
+CREATE INDEX IF NOT EXISTS idx_efforts_created ON effort_records(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_verifications_effort ON verifications(effort_id);
+CREATE INDEX IF NOT EXISTS idx_verifications_verifier ON verifications(verifier_id);
+CREATE INDEX IF NOT EXISTS idx_trust_scores_user ON trust_scores(user_id);
+CREATE INDEX IF NOT EXISTS idx_trust_scores_total ON trust_scores(total_score DESC);
+CREATE INDEX IF NOT EXISTS idx_fraud_logs_user ON fraud_detection_logs(user_id);
+CREATE INDEX IF NOT EXISTS idx_fraud_logs_effort ON fraud_detection_logs(effort_id);
+CREATE INDEX IF NOT EXISTS idx_user_progress_user ON user_progress(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_badges_user ON user_badges(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_badges_badge ON user_badges(badge_id);
 
--- Trigger to update updated_at timestamp
+-- Triggers
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -162,17 +148,27 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
-CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users
+DO $$ BEGIN
+  CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
-CREATE TRIGGER update_efforts_updated_at BEFORE UPDATE ON effort_records
+DO $$ BEGIN
+  CREATE TRIGGER update_efforts_updated_at BEFORE UPDATE ON effort_records
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
-CREATE TRIGGER update_verifications_updated_at BEFORE UPDATE ON verifications
+DO $$ BEGIN
+  CREATE TRIGGER update_verifications_updated_at BEFORE UPDATE ON verifications
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
-CREATE TRIGGER update_trust_scores_updated_at BEFORE UPDATE ON trust_scores
+DO $$ BEGIN
+  CREATE TRIGGER update_trust_scores_updated_at BEFORE UPDATE ON trust_scores
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
-CREATE TRIGGER update_user_progress_updated_at BEFORE UPDATE ON user_progress
+DO $$ BEGIN
+  CREATE TRIGGER update_user_progress_updated_at BEFORE UPDATE ON user_progress
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;

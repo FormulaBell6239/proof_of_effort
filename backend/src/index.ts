@@ -28,15 +28,21 @@ app.use(helmet());
  * - In development we default to localhost:3000
  * - In production you should set CORS_ORIGIN to your deployed frontend domain
  */
-const defaultDevOrigin = 'http://localhost:3000';
-const corsOrigin = process.env.CORS_ORIGIN || defaultDevOrigin;
+if (process.env.NODE_ENV === 'production' && !process.env.CORS_ORIGIN) {
+  logger.error('CORS_ORIGIN must be set in production');
+  process.exit(1);
+}
+if (!process.env.JWT_SECRET) {
+  logger.error('JWT_SECRET must be set');
+  process.exit(1);
+}
+
+const corsOrigin = process.env.CORS_ORIGIN || 'http://localhost:3000';
 
 app.use(
   cors({
     origin: corsOrigin,
-    // Only enable credentials if you are using cookie-based auth.
-    // JWT in Authorization header does not require this.
-    credentials: process.env.CORS_CREDENTIALS === 'true'
+    credentials: process.env.CORS_CREDENTIALS === 'true',
   })
 );
 

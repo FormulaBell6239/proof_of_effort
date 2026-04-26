@@ -10,10 +10,16 @@ export function getPool(): Pool {
     throw new Error('DATABASE_URL is not configured');
   }
 
+  const sslDisabled = process.env.PGSSLMODE === 'disable';
+  const isProduction = process.env.NODE_ENV === 'production';
+
   pool = new Pool({
     connectionString,
-    // Managed providers often require SSL in production.
-    ssl: process.env.PGSSLMODE === 'disable' ? false : process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+    ssl: sslDisabled
+      ? false
+      : isProduction
+      ? { rejectUnauthorized: true }   // enforce valid certs in production
+      : false,
   });
 
   return pool;

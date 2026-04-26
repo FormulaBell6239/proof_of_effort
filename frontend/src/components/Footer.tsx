@@ -31,7 +31,7 @@ export default function Footer() {
         </div>
         
         <div className="mt-10 pt-8 border-t border-white/10 text-center text-white/50">
-          <p>&copy; 2025 Proof of Effort Network. All rights reserved.</p>
+          <p>&copy; 2026 Proof of Effort Network. All rights reserved.</p>
         </div>
       </div>
     </footer>

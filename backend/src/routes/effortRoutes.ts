@@ -1,5 +1,7 @@
 import { Router } from 'express';
-import { authenticate } from '../middleware/auth';
+import multer from 'multer';
+import path from 'path';
+import { authenticate, AuthRequest } from '../middleware/auth';
 import { assessEffortRisk } from '../services/riskScoring';
 import rateLimit from 'express-rate-limit';
 import { AppError } from '../middleware/errorHandler';
@@ -9,6 +11,31 @@ import { isDbUnavailableError } from '../db/errors';
 import { randomUUID } from 'crypto';
 
 const router = Router();
+
+// ── Multer (file uploads) ──────────────────────────────────────────────────────
+const ALLOWED_MIME_TYPES = (process.env.ALLOWED_FILE_TYPES || 'image/jpeg,image/png,image/jpg,application/pdf,video/mp4').split(',');
+const MAX_FILE_SIZE = parseInt(process.env.MAX_FILE_SIZE || '10485760'); // 10 MB default
+
+const storage = multer.diskStorage({
+  destination: path.join(__dirname, '../../uploads/proofs'),
+  filename: (_req, file, cb) => {
+    const unique = `${Date.now()}-${randomUUID()}`;
+    cb(null, `${unique}${path.extname(file.originalname)}`);
+  },
+});
+
+const upload = multer({
+  storage,
+  limits: { fileSize: MAX_FILE_SIZE },
+  fileFilter: (_req, file, cb) => {
+    if (ALLOWED_MIME_TYPES.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new AppError(`File type ${file.mimetype} not allowed`, 400));
+    }
+  },
+});
+
 
 const riskAssessmentLimiter = rateLimit({
   windowMs: Number(process.env.RISK_RATE_LIMIT_WINDOW_MS ?? 60 * 1000),
@@ -90,7 +117,7 @@ router.post('/risk-assessment', riskAssessmentLimiter, (req, res) => {
 });
 
 // Create new effort record
-router.post('/', async (req, res, next) => {
+router.post('/', authenticate, async (req: AuthRequest, res, next) => {
   try {
     const body = req.body ?? {};
 
@@ -99,7 +126,6 @@ router.post('/', async (req, res, next) => {
     const category = body.category;
     const estimated_hours = body.estimated_hours;
     const effort_type = body.effort_type;
-    const walletAddress = (typeof body.wallet_address === 'string' && body.wallet_address) ? body.wallet_address : undefined;
 
     assertString('title', title, { maxLen: 255 });
     assertString('description', description, { maxLen: 5000 });
@@ -113,9 +139,6 @@ router.post('/', async (req, res, next) => {
 
     const normalizedEffortType = typeof effort_type === 'string' ? effort_type : 'need_verification';
 
-    const resolvedWallet = walletAddress ?? '0x0000000000000000000000000000000000000000';
-    const username = `w_${resolvedWallet.slice(2)}`.slice(0, 50);
-
     const effortAssessment = assessEffortRisk({
       title,
       description,
@@ -124,17 +147,28 @@ router.post('/', async (req, res, next) => {
       proof_files_count: assertNumber('proof_files_count', body.proof_files_count, { min: 0, max: 25, optional: true })
     });
 
-    try {
+    // Use authenticated user if present, otherwise fall back to wallet_address from body
+    let userId: string;
+
+    if (req.userId) {
+      userId = req.userId;
+    } else {
+      const walletAddress = (typeof body.wallet_address === 'string' && body.wallet_address)
+        ? body.wallet_address
+        : '0x0000000000000000000000000000000000000000';
+      const username = `w_${walletAddress.slice(2)}`.slice(0, 50);
       const userResult = await query<{ id: string }>(
         `INSERT INTO users (wallet_address, username)
          VALUES ($1, $2)
          ON CONFLICT (wallet_address) DO UPDATE SET wallet_address = EXCLUDED.wallet_address
          RETURNING id`,
-        [resolvedWallet, username]
+        [walletAddress, username]
       );
-      const userId = userResult.rows[0]?.id;
+      userId = userResult.rows[0]?.id;
       if (!userId) throw new AppError('Failed to resolve user', 500);
+    }
 
+    try {
       const inserted = await query(
         `INSERT INTO effort_records
           (user_id, title, description, category, effort_type, estimated_hours, proof_files, status, metadata)
@@ -232,33 +266,106 @@ router.get('/', async (req, res, next) => {
 });
 
 // Get specific effort
-router.get('/:effortId', (req, res) => {
-  res.json({ message: `Get effort ${req.params.effortId}` });
+router.get('/:effortId', async (req, res, next) => {
+  try {
+    const result = await query(
+      `SELECT er.*, u.username, u.wallet_address
+       FROM effort_records er
+       JOIN users u ON u.id = er.user_id
+       WHERE er.id = $1`,
+      [req.params.effortId]
+    );
+    if (!result.rows[0]) throw new AppError('Effort not found', 404);
+    res.json({ success: true, data: result.rows[0] });
+  } catch (err) { next(err); }
 });
 
-// Update effort
-router.put('/:effortId', authenticate, (req, res) => {
-  res.json({ message: `Update effort ${req.params.effortId}` });
+// Update effort (owner only)
+router.put('/:effortId', authenticate, async (req: AuthRequest, res, next) => {
+  try {
+    const { title, description, category, estimated_hours } = req.body ?? {};
+    const result = await query(
+      `UPDATE effort_records
+       SET title            = COALESCE($1, title),
+           description      = COALESCE($2, description),
+           category         = COALESCE($3, category),
+           estimated_hours  = COALESCE($4, estimated_hours),
+           updated_at       = NOW()
+       WHERE id = $5 AND user_id = $6
+       RETURNING *`,
+      [title || null, description || null, category || null, estimated_hours ?? null, req.params.effortId, req.userId]
+    );
+    if (!result.rows[0]) throw new AppError('Effort not found or not yours', 404);
+    res.json({ success: true, data: result.rows[0] });
+  } catch (err) { next(err); }
 });
 
-// Delete effort
-router.delete('/:effortId', authenticate, (req, res) => {
-  res.json({ message: `Delete effort ${req.params.effortId}` });
+// Delete effort (owner only, pending status only)
+router.delete('/:effortId', authenticate, async (req: AuthRequest, res, next) => {
+  try {
+    const result = await query(
+      `DELETE FROM effort_records
+       WHERE id = $1 AND user_id = $2 AND status = 'pending'
+       RETURNING id`,
+      [req.params.effortId, req.userId]
+    );
+    if (!result.rows[0]) throw new AppError('Effort not found, not yours, or already under review', 404);
+    res.json({ success: true });
+  } catch (err) { next(err); }
 });
 
 // Upload proof files
-router.post('/:effortId/proof', authenticate, (req, res) => {
-  res.json({ message: `Upload proof for effort ${req.params.effortId}` });
+router.post('/:effortId/proof', authenticate, upload.array('files', 10), async (req: AuthRequest, res, next) => {
+  try {
+    const files = (req.files as Express.Multer.File[]) ?? [];
+    if (!files.length) throw new AppError('No files uploaded', 400);
+
+    const filePaths = files.map(f => `/uploads/proofs/${f.filename}`);
+
+    const result = await query(
+      `UPDATE effort_records
+       SET proof_files = proof_files || $1::text[],
+           updated_at  = NOW()
+       WHERE id = $2 AND user_id = $3
+       RETURNING id, proof_files`,
+      [filePaths, req.params.effortId, req.userId]
+    );
+    if (!result.rows[0]) throw new AppError('Effort not found or not yours', 404);
+
+    res.json({ success: true, data: { proof_files: result.rows[0].proof_files } });
+  } catch (err) { next(err); }
 });
 
-// Get effort verifications
-router.get('/:effortId/verifications', (req, res) => {
-  res.json({ message: `Get verifications for effort ${req.params.effortId}` });
+// Get verifications for an effort
+router.get('/:effortId/verifications', async (req, res, next) => {
+  try {
+    const result = await query(
+      `SELECT v.*, u.username as verifier_username
+       FROM verifications v
+       JOIN users u ON u.id = v.verifier_id
+       WHERE v.effort_id = $1
+       ORDER BY v.created_at DESC`,
+      [req.params.effortId]
+    );
+    res.json({ success: true, data: result.rows });
+  } catch (err) { next(err); }
 });
 
 // Get efforts by category
-router.get('/category/:category', (req, res) => {
-  res.json({ message: `Get efforts in category ${req.params.category}` });
+router.get('/category/:category', async (req, res, next) => {
+  try {
+    const limit = Math.min(Number(req.query.limit ?? 20), 100);
+    const result = await query(
+      `SELECT er.*, u.username, u.wallet_address
+       FROM effort_records er
+       JOIN users u ON u.id = er.user_id
+       WHERE er.category = $1
+       ORDER BY er.created_at DESC
+       LIMIT $2`,
+      [req.params.category, limit]
+    );
+    res.json({ success: true, data: result.rows });
+  } catch (err) { next(err); }
 });
 
 export default router;
