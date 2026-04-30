@@ -30,12 +30,12 @@ export default function Header() {
   const isActive = (path: string) => location.pathname === path;
 
   return (
-    <header className="sticky top-0 z-20 border-b border-white/10 bg-black/40 backdrop-blur-xl">
+    <header className="sticky top-0 z-20 border-b border-white/20 bg-black/45 backdrop-blur-xl">
       <nav className="container mx-auto px-4 py-3">
         <div className="flex items-center justify-between gap-4">
 
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-3 shrink-0" onClick={() => setMobileOpen(false)}>
+          <Link to="/" className="flex items-center gap-2 shrink-0" onClick={() => setMobileOpen(false)}>
             <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-primary-400 via-primary-600 to-indigo-500 flex items-center justify-center">
               <span className="text-white font-extrabold text-xs tracking-wide">PoE</span>
             </div>

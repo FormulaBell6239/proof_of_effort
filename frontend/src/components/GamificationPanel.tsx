@@ -23,7 +23,7 @@ function formatTier(tier?: string) {
   }
 }
 
-export default function GamificationPanel({ userId, title = 'Progress' }: Props) {
+export default function GamificationPanel({ title = 'Progress' }: Props) {
   const isAuthenticated = !!getAuthToken();
   const { data, isLoading, error } = useQuery({
     queryKey: ['gamificationMe'],

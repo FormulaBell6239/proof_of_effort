@@ -11,7 +11,7 @@ export default function Layout({ children }: LayoutProps) {
     <div className="min-h-screen flex flex-col noise">
       <div className="pointer-events-none fixed inset-0 app-grid opacity-50" />
       <Header />
-      <main className="relative z-10 flex-grow container mx-auto px-4 py-10">
+      <main className="relative z-10 flex-grow container mx-auto px-4 py-6 md:py-10">
         <div className="mx-auto w-full max-w-6xl">
           {children}
         </div>

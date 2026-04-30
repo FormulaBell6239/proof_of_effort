@@ -2,9 +2,9 @@ import { Link } from 'react-router-dom';
 
 export default function HomePage() {
   return (
-    <div className="space-y-16">
+    <div className="space-y-8 md:space-y-16">
       {/* Hero Section */}
-      <section className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-10 md:p-16 glow">
+      <section className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-6 sm:p-10 md:p-16 glow">
         <div className="pointer-events-none absolute inset-0 opacity-40">
           <div className="absolute -top-24 -left-24 h-72 w-72 rounded-full bg-primary-500/30 blur-3xl" />
           <div className="absolute -bottom-24 -right-24 h-72 w-72 rounded-full bg-indigo-500/30 blur-3xl" />
@@ -110,7 +110,7 @@ export default function HomePage() {
       </section>
 
       {/* Stats */}
-      <section className="grid md:grid-cols-4 gap-6 text-center">
+      <section className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
         {[
           { label: 'Total Efforts', value: '0' },
           { label: 'Verified Users', value: '0' },

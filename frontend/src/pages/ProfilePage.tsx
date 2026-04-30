@@ -23,7 +23,7 @@ export default function ProfilePage() {
   if (!userId) {
     return (
       <div className="card text-center py-12">
-        <p className="text-gray-600">Connect your wallet to view your profile.</p>
+        <p className="text-white/60">Connect your wallet to view your profile.</p>
       </div>
     );
   }
@@ -32,13 +32,13 @@ export default function ProfilePage() {
     <div className="space-y-6">
       <div className="card">
         <div className="flex items-start justify-between">
-          <div className="flex items-center space-x-4">
-            <div className="w-20 h-20 bg-primary-600 rounded-full flex items-center justify-center text-white text-2xl font-bold">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 bg-primary-600 rounded-full flex items-center justify-center text-white text-2xl font-bold shrink-0">
               {profile?.username?.[0]?.toUpperCase() ?? 'U'}
             </div>
             <div>
               <h1 className="text-2xl font-bold">{loading ? '...' : (profile?.username ?? 'Unknown')}</h1>
-              <p className="text-gray-600">{profile?.wallet_address ? `${profile.wallet_address.slice(0, 10)}...` : ''}</p>
+              <p className="text-white/60 text-sm break-all">{profile?.wallet_address ? `${profile.wallet_address.slice(0, 10)}...` : ''}</p>
             </div>
           </div>
         </div>

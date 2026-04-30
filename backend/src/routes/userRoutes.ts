@@ -16,8 +16,9 @@ function getJwtSecret(): string {
 }
 
 function signToken(userId: string, walletAddress: string): string {
+  const expiration = process.env.JWT_EXPIRATION || '7d';
   return jwt.sign({ userId, walletAddress }, getJwtSecret(), {
-    expiresIn: (process.env.JWT_EXPIRATION as any) || '7d',
+    expiresIn: expiration as jwt.SignOptions['expiresIn'],
   });
 }
 
@@ -119,6 +120,16 @@ router.post('/verify-signature', async (req: Request, res: Response, next: NextF
     }
     if (!/^0x[0-9a-fA-F]{40}$/.test(wallet_address)) {
       throw new AppError('Invalid wallet address', 400);
+    }
+
+    // Validate timestamp freshness to prevent replay attacks (5-minute window)
+    const tsMatch = /Timestamp:\s*(\d+)/.exec(message as string);
+    if (!tsMatch) {
+      throw new AppError('Message missing timestamp', 400);
+    }
+    const msgTs = parseInt(tsMatch[1], 10);
+    if (!Number.isFinite(msgTs) || Math.abs(Date.now() - msgTs) > 5 * 60 * 1000) {
+      throw new AppError('Message timestamp expired or invalid', 400);
     }
 
     // Recover signer from signature

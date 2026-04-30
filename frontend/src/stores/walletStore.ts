@@ -29,14 +29,24 @@ interface WalletState {
   disconnect: () => void;
 }
 
+function loadStoredUser(): StoredUser | null {
+  try {
+    const raw = localStorage.getItem(USER_KEY);
+    return raw ? (JSON.parse(raw) as StoredUser) : null;
+  } catch {
+    localStorage.removeItem(USER_KEY);
+    return null;
+  }
+}
+
 export const useWalletStore = create<WalletState>((set) => ({
   isConnected: false,
   address: null,
   provider: null,
   signer: null,
-  userId: localStorage.getItem(USER_KEY) ? JSON.parse(localStorage.getItem(USER_KEY)!).id : null,
+  userId: loadStoredUser()?.id ?? null,
   token: localStorage.getItem(TOKEN_KEY),
-  user: localStorage.getItem(USER_KEY) ? JSON.parse(localStorage.getItem(USER_KEY)!) : null,
+  user: loadStoredUser(),
 
   connect: async () => {
     try {
